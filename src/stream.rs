@@ -159,6 +159,32 @@ impl Stream {
         Ok(event)
     }
 
+    // Provides a way to write a slice of plaintext data, handling encryption
+    // automatically if TLS is active.
+    pub async fn write_plain_all(&mut self, data: &[u8]) -> Result<(), Error<Infallible>> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        if let Some(tls) = &mut self.tls {
+            // --- Secure (TLS) Path ---
+            // 1. Feed the plaintext data into the rustls writer.
+            tls.writer().write_all(data)?;
+            // 2. Call the internal `encrypt` function. This moves the encrypted
+            //    ciphertext from rustls's internal buffer into our `write_buffer`.
+            encrypt(tls, &mut self.write_buffer, Vec::new())?;
+            // 3. Call the internal `write` helper to send the contents of
+            //    `write_buffer` to the underlying TcpStream.
+            write(&mut self.stream, &mut self.write_buffer).await?;
+        } else {
+            // --- Insecure (Plain TCP) Path ---
+            // Just write the data directly to the stream.
+            self.stream.write_all(data).await?;
+        }
+
+        Ok(())
+    }
+
     #[cfg(feature = "expose_stream")]
     /// Return the underlying stream for debug purposes (or experiments).
     ///
