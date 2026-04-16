@@ -87,6 +87,19 @@ impl Stream {
 
     pub async fn next<F: State>(&mut self, mut state: F) -> Result<F::Event, Error<F::Error>> {
         let event = loop {
+            if !self.write_buffer.is_empty() {
+                let (read_stream, write_stream) = self.stream.split();
+                select! {
+                    biased;
+                    result = write(write_stream, &mut self.write_buffer) => result,
+                    result = read(read_stream, &mut self.read_buffer) => result,
+                }?;
+
+                if !self.write_buffer.is_empty() {
+                    continue;
+                }
+            }
+
             match &mut self.tls {
                 None => {
                     // Provide input bytes to the client/server
@@ -141,22 +154,56 @@ impl Stream {
                 }
             }
 
-            // Progress the stream
+            // Progress the stream.
+            // If state produced output, loop back and let the pending-output
+            // path drive the write before we wait for more input.
             if self.write_buffer.is_empty() {
                 read(&mut self.stream, &mut self.read_buffer).await?;
-            } else {
-                // We read and write the stream simultaneously because otherwise
-                // a deadlock between client and server might occur if both sides
-                // would only read or only write.
-                let (read_stream, write_stream) = self.stream.split();
-                select! {
-                    result = read(read_stream, &mut self.read_buffer) => result,
-                    result = write(write_stream, &mut self.write_buffer) => result,
-                }?;
-            };
+            }
         };
 
         Ok(event)
+    }
+
+    pub async fn next_send_only<F: State>(
+        &mut self,
+        mut state: F,
+    ) -> Result<Option<F::Event>, Error<F::Error>> {
+        loop {
+            if !self.write_buffer.is_empty() {
+                write(&mut self.stream, &mut self.write_buffer).await?;
+                continue;
+            }
+
+            let interrupt = match state.next() {
+                Ok(event) => return Ok(Some(event)),
+                Err(interrupt) => interrupt,
+            };
+
+            let io = match interrupt {
+                Interrupt::Io(io) => io,
+                Interrupt::Error(err) => return Err(Error::State(err)),
+            };
+
+            match &mut self.tls {
+                None => {
+                    if let Io::Output(bytes) = io {
+                        self.write_buffer.extend(bytes);
+                    } else {
+                        return Ok(None);
+                    }
+                }
+                Some(tls) => {
+                    let plain_bytes = if let Io::Output(bytes) = io {
+                        bytes
+                    } else {
+                        return Ok(None);
+                    };
+
+                    encrypt(tls, &mut self.write_buffer, plain_bytes)?;
+                }
+            }
+        }
     }
 
     // Provides a way to write a slice of plaintext data, handling encryption
