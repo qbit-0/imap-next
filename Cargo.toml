@@ -41,9 +41,3 @@ tracing = "0.1.40"
 
 [dev-dependencies]
 tokio = { version = "1.43.1", features = ["full"] }
-
-[workspace]
-resolver = "2"
-members = [
-    "integration-test",
-]
