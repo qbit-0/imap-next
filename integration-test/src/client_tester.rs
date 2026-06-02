@@ -356,11 +356,6 @@ impl ConnectionState {
             ConnectionState::Disconnected => panic!("Client is already disconnected"),
         }
     }
-
-    #[allow(unused)]
-    fn take(&mut self) -> ConnectionState {
-        std::mem::replace(self, ConnectionState::Disconnected)
-    }
 }
 
 /// Enqueued command that can be used for assertions.
