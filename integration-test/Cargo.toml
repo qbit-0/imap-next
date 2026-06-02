@@ -13,6 +13,3 @@ imap-next = { path = ".." }
 tokio = { version = "1.43.1", features = ["macros", "net", "rt", "time"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-
-# Fix minimal versions
-lazy_static = "1.5.0"
