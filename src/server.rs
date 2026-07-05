@@ -134,6 +134,13 @@ impl Server {
         }
     }
 
+    /// Returns whether all enqueued responses (and the greeting) have been
+    /// fully sent. MailSite patch: used to drain the logout responses (untagged
+    /// BYE plus the RFC 3501 tagged OK) before the connection closes.
+    pub fn response_queue_is_empty(&self) -> bool {
+        self.send_state.is_send_queue_empty()
+    }
+
     /// Enqueues the [`Data`] response for being sent to the client.
     ///
     /// The response is not sent immediately but during one of the next calls of

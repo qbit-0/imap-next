@@ -27,6 +27,13 @@ impl ServerSendState {
         }
     }
 
+    /// Returns whether there is nothing left to send (no queued messages and
+    /// no message currently in flight). MailSite patch: lets the connection
+    /// loop drain all logout responses (BYE + tagged OK) before closing.
+    pub fn is_send_queue_empty(&self) -> bool {
+        self.queued_messages.is_empty() && self.current_message.is_none()
+    }
+
     pub fn enqueue_greeting(&mut self, greeting: Greeting<'static>) {
         self.queued_messages
             .push_back(QueuedMessage::Greeting { greeting });
