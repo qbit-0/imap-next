@@ -1,7 +1,8 @@
-use imap_codec::{
-    fragmentizer::{FragmentInfo, Fragmentizer},
-    imap_types::utils::escape_byte_string,
-};
+// The raw bytes of a fragment carry LOGIN passwords and AUTHENTICATE
+// payloads, so they are traced only in debug builds (MailSite, #2235).
+#[cfg(debug_assertions)]
+use imap_codec::imap_types::utils::escape_byte_string;
+use imap_codec::fragmentizer::{FragmentInfo, Fragmentizer};
 use tracing::{instrument, trace};
 
 /// Describes the type of a fragment for logging purposes.
@@ -24,9 +25,17 @@ impl From<FragmentInfo> for FragmentKind {
 pub fn read_fragment(fragmentizer: &mut Fragmentizer) -> Option<FragmentInfo> {
     let fragment_info = fragmentizer.progress()?;
 
+    #[cfg(debug_assertions)]
     trace!(
         type = ?FragmentKind::from(fragment_info),
         data = escape_byte_string(fragmentizer.fragment_bytes(fragment_info)),
+        complete = fragmentizer.is_message_complete(),
+        exceeded = fragmentizer.is_max_message_size_exceeded(),
+        poisoned = fragmentizer.is_message_poisoned(),
+    );
+    #[cfg(not(debug_assertions))]
+    trace!(
+        type = ?FragmentKind::from(fragment_info),
         complete = fragmentizer.is_message_complete(),
         exceeded = fragmentizer.is_max_message_size_exceeded(),
         poisoned = fragmentizer.is_message_poisoned(),
@@ -43,8 +52,11 @@ pub fn write_fragment(
 ) {
     write_buffer.extend(fragment_data);
 
+    #[cfg(debug_assertions)]
     trace!(
         type = ?fragment_kind,
         data = escape_byte_string(fragment_data),
     );
+    #[cfg(not(debug_assertions))]
+    trace!(type = ?fragment_kind, bytes = fragment_data.len());
 }
