@@ -3,8 +3,9 @@ name = "imap-next"
 description = "Thin sans I/O abstraction over IMAP's distinct protocol flows"
 keywords = ["email", "imap", "protocol", "network"]
 categories = ["email", "network-programming"]
-version = "0.3.1"
+version = "0.3.4"
 repository = "https://github.com/duesee/imap-next"
+rust-version = "1.85"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 exclude = [".github"]
@@ -29,15 +30,16 @@ ext_mailbox_referrals = ["imap-codec/ext_mailbox_referrals"]
 ext_metadata = ["imap-codec/ext_metadata"]
 ext_namespace = ["imap-codec/ext_namespace"]
 ext_acl = ["imap-codec/ext_acl"]
+ext_utf8 = ["imap-codec/ext_utf8"]
 # </Forward to imap-codec>
 
 [dependencies]
-bytes = { version = "1.8.0", optional = true }
-imap-codec = { version = "2.0.0-alpha.5", features = ["quirk_crlf_relaxed"] }
-thiserror = "2.0.3"
-tokio = { version = "1.43.1", optional = true, features = ["io-util", "macros", "net"] }
-tokio-rustls = { version = "0.26.0", optional = true, default-features = false }
-tracing = "0.1.40"
+bytes = { version = "1.11.0", optional = true }
+imap-codec = { version = "2.0.0-alpha.9", features = ["quirk_crlf_relaxed"] }
+thiserror = "2.0.17"
+tokio = { version = "1.48.0", optional = true, features = ["io-util", "macros", "net"] }
+tokio-rustls = { version = "0.26.4", optional = true, default-features = false }
+tracing = "0.1.41"
 
 [dev-dependencies]
-tokio = { version = "1.43.1", features = ["full"] }
+tokio = { version = "1.48.0", features = ["full"] }

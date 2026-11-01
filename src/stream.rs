@@ -13,6 +13,7 @@ use tokio::{
     select,
 };
 use tokio_rustls::{rustls, TlsStream};
+use tracing::instrument;
 #[cfg(debug_assertions)]
 use tracing::trace;
 
@@ -272,6 +273,7 @@ pub enum Error<E> {
     State(E),
 }
 
+#[instrument(name = "io", skip_all, fields(action = "read"))]
 async fn read<S: AsyncRead + Unpin>(
     mut stream: S,
     read_buffer: &mut BytesMut,
@@ -280,10 +282,7 @@ async fn read<S: AsyncRead + Unpin>(
     let old_len = read_buffer.len();
     let byte_count = stream.read_buf(read_buffer).await?;
     #[cfg(debug_assertions)]
-    trace!(
-        data = escape_byte_string(&read_buffer[old_len..]),
-        "io/read/raw"
-    );
+    trace!(data = escape_byte_string(&read_buffer[old_len..]));
 
     if byte_count == 0 {
         // The result is 0 if the stream reached "end of file" or the read buffer was
@@ -295,6 +294,7 @@ async fn read<S: AsyncRead + Unpin>(
     Ok(())
 }
 
+#[instrument(name = "io", skip_all, fields(action = "write"))]
 async fn write<S: AsyncWrite + Unpin>(
     mut stream: S,
     write_buffer: &mut BytesMut,
@@ -302,10 +302,7 @@ async fn write<S: AsyncWrite + Unpin>(
     while !write_buffer.is_empty() {
         let byte_count = stream.write(write_buffer).await?;
         #[cfg(debug_assertions)]
-        trace!(
-            data = escape_byte_string(&write_buffer[..byte_count]),
-            "io/write/raw"
-        );
+        trace!(data = escape_byte_string(&write_buffer[..byte_count]));
         write_buffer.advance(byte_count);
 
         if byte_count == 0 {
